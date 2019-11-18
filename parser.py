@@ -1,5 +1,7 @@
 import pandas as pd
 import os
+import shutil
+import zipfile
 
 
 def indexes_by_val(df, val):
@@ -73,20 +75,55 @@ def pivot_table(df, header_row):
     return df.reset_index()
 
 
-def transform_to_csv(wb):
+def transform_to_csv(wb, tabs=None):
+    for tab_name in wb:
+        ws = wb[tab_name]
+        table_name = get_val(ws, 'TABLE_IDENTIFIER')
+        breakdown_group = get_val(ws, 'BREAKDOWN_GROUP')
+        if (table_name and breakdown_group and tab_name not in ['Parameters']) or tab_name in tabs:
+            time_period = get_val(ws, 'TIME_PERIOD')
+            ref_area = get_val(ws, 'REF_AREA')
+            ws = outline_table(ws, 'EDUCATION_LEV')
+            ws = pivot_table(ws, 'EDUCATION_LEV')
+            ws.insert(0,'REF_AREA', ref_area)
+            ws.insert(0,'TIME_PERIOD', time_period)
+            yield (tab_name, ws)
+
+
+def get_tab_names(file):
+    wb = pd.read_excel(file, sheet_name=None, header=None)
     for tab_name in wb:
         ws = wb[tab_name]
         table_name = get_val(ws, 'TABLE_IDENTIFIER')
         breakdown_group = get_val(ws, 'BREAKDOWN_GROUP')
         if table_name and breakdown_group and tab_name not in ['Parameters']:
-            time_period = get_val(ws, 'TIME_PERIOD')
-            ref_area = get_val(ws, 'REF_AREA')
-            ws = outline_table(ws, 'EDUCATION_LEV')
-            ws = pivot_table(ws, 'EDUCATION_LEV')
-            ws.insert(0,'BREAKDOWN_GROUP', breakdown_group)
-            ws.insert(0,'REF_AREA', ref_area)
-            ws.insert(0,'TIME_PERIOD', time_period)
-            yield (table_name, ws)
+            to_process = True
+        else:
+            to_process = False
+        yield (tab_name, to_process)
+
+
+def process_file(file, save_folder='', tabs=None):
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+    base_name = os.path.splitext(os.path.basename(file))[0]
+    tmp_folder = os.path.join(save_folder, base_name)
+    if not os.path.exists(tmp_folder):
+        os.makedirs(tmp_folder)
+    wb = pd.read_excel(file, sheet_name=None, header=None)
+    for table_name, df in transform_to_csv(wb, tabs=tabs):
+        df.to_csv(os.path.join(tmp_folder, f'{table_name}.csv'), index=False, header=True)
+    zip_file = os.path.join(save_folder, f'{base_name}.zip')
+    zip_directory_files(zip_file, tmp_folder)
+    shutil.rmtree(tmp_folder)
+    return zip_file
+
+
+def zip_directory_files(zip_name, directory):
+    zipf = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
+    for file in os.listdir(directory):
+        zipf.write(os.path.join(directory, file), file)
+    zipf.close()
 
 
 if __name__ == '__main__':

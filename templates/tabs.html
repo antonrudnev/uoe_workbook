@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UOE Workbook</title>
+    <h1>Select tabs to transform</h1>
+    <form method=post enctype=multipart/form-data>
+        <ul>
+            {% for t, p in tabs %}
+                <p><input type="checkbox" name="tab" value="{{ t }}" {{ "checked" if p else ""}}>{{ t }}</p>
+            {% endfor %}
+        </ul>
+        <input type=submit value=Submit>
+    </form>
+</head>
+<body>
+
+</body>
+</html>

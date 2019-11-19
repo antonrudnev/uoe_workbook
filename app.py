@@ -3,10 +3,9 @@ import uuid
 from flask import Flask, flash, request, redirect, render_template, send_file, url_for
 from werkzeug.utils import secure_filename
 
-from .parser import get_tab_names, process_file
+from .parser import get_tab_names, process_file, zip_directory
 
 UPLOAD_FOLDER = 'files'
-RESULTS_FOLDER = 'results'
 ALLOWED_EXTENSIONS = {'xlsx'}
 
 app = Flask(__name__)
@@ -44,7 +43,9 @@ def tabs(filename):
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if request.method == 'POST':
         tabs = request.form.getlist('tab')
-        zip_file = process_file(filepath, app.config['UPLOAD_FOLDER'], tabs)
+        save_folder = os.path.join(app.config['UPLOAD_FOLDER'], os.path.splitext(filename)[0])
+        process_file(filepath, save_folder, tabs)
+        zip_file = zip_directory(save_folder)
         return send_file(zip_file, as_attachment=True)
     tabs = list(get_tab_names(filepath))
     return render_template('tabs.html', tabs=tabs)

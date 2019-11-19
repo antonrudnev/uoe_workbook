@@ -1,9 +1,9 @@
 import os
 import uuid
-from flask import Flask, flash, jsonify, make_response, request, redirect, render_template, send_file, url_for
+from flask import Flask, flash, request, redirect, render_template, send_file, url_for
 from werkzeug.utils import secure_filename
 
-from parser import get_tab_names, process_file
+from .parser import get_tab_names, process_file
 
 UPLOAD_FOLDER = 'files'
 RESULTS_FOLDER = 'results'

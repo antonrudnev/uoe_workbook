@@ -75,7 +75,7 @@ def pivot_table(df, header_row):
     return df.reset_index()
 
 
-def transform_to_csv(wb, tabs=None):
+def transform_to_csv(wb, tabs=[]):
     for tab_name in wb:
         ws = wb[tab_name]
         table_name = get_val(ws, 'TABLE_IDENTIFIER')
@@ -103,7 +103,7 @@ def get_tab_names(file):
         yield (tab_name, to_process)
 
 
-def process_file(file, save_folder='', tabs=None):
+def process_file(file, save_folder, tabs=[]):
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     base_name = os.path.splitext(os.path.basename(file))[0]

@@ -85,19 +85,31 @@ def transform_to_csv(wb, tabs=None):
                 tabs is not None and tab_name in tabs):
             time_period = get_val(ws, 'TIME_PERIOD')
             ref_area = get_val(ws, 'REF_AREA')
-            ws = outline_table(ws, 'EDUCATION_LEV')
-            ws = pivot_table(ws, 'EDUCATION_LEV')
-            ws.insert(0, 'REF_AREA', ref_area)
-            ws.insert(0, 'TIME_PERIOD', time_period)
-            yield (tab_name, ws)
+            success = True
+            message = None
+            try:
+                ws = outline_table(ws, 'EDUCATION_LEV')
+                ws = pivot_table(ws, 'EDUCATION_LEV')
+                ws.insert(0, 'REF_AREA', ref_area)
+                ws.insert(0, 'TIME_PERIOD', time_period)
+            except Exception as e:
+                success = False
+                message = str(e)
+            finally:
+                yield (tab_name, ws, success, message)
 
 
 def process_file(file, output_folder, tabs=None):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     wb = pd.read_excel(file, sheet_name=None, header=None)
-    for name, df in transform_to_csv(wb, tabs=tabs):
-        df.to_csv(os.path.join(output_folder, f'{name}.csv'), index=False, header=True)
+    for name, df, success, message in transform_to_csv(wb, tabs=tabs):
+        if success:
+            df.to_csv(os.path.join(output_folder, f'{name}.csv'), index=False, header=True)
+        else:
+            error = open(os.path.join(output_folder, f'{name}.txt'), 'w')
+            error.write(message)
+            error.close()
 
 
 def get_tab_names(file):

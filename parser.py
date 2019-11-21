@@ -2,11 +2,12 @@ import os
 import pandas as pd
 import shutil
 import zipfile
+import time
 
 
 def indexes_by_val(df, val):
     ids = [(df[col][df[col].eq(val)].index[i], df.columns.get_loc(col)) for col in df.columns for i in
-            range(len(df[col][df[col].eq(val)].index))]
+           range(len(df[col][df[col].eq(val)].index))]
     if len(ids) == 1:
         return ids[0]
     else:
@@ -76,38 +77,39 @@ def pivot_table(df, header_row):
     return df.reset_index()
 
 
-def transform_to_csv(wb, tabs=None):
+def transform_to_csv(ws):
+    time_period = get_val(ws, 'TIME_PERIOD')
+    ref_area = get_val(ws, 'REF_AREA')
+    ws = outline_table(ws, 'EDUCATION_LEV')
+    ws = pivot_table(ws, 'EDUCATION_LEV')
+    ws.insert(0, 'REF_AREA', ref_area)
+    ws.insert(0, 'TIME_PERIOD', time_period)
+    return ws
+
+
+def process_workbook(wb, tabs):
     for tab_name in wb:
         ws = wb[tab_name]
         table_name = get_val(ws, 'TABLE_IDENTIFIER')
         breakdown_group = get_val(ws, 'BREAKDOWN_GROUP')
-        if (table_name and breakdown_group and tab_name not in ['Parameters'] and tabs is None) or (
+        if (tabs is None and table_name and breakdown_group and tab_name not in ['Parameters']) or (
                 tabs is not None and tab_name in tabs):
-            time_period = get_val(ws, 'TIME_PERIOD')
-            ref_area = get_val(ws, 'REF_AREA')
-            success = True
-            message = None
             try:
-                ws = outline_table(ws, 'EDUCATION_LEV')
-                ws = pivot_table(ws, 'EDUCATION_LEV')
-                ws.insert(0, 'REF_AREA', ref_area)
-                ws.insert(0, 'TIME_PERIOD', time_period)
+                ws = transform_to_csv(ws)
+                yield (tab_name, ws, True, None)
             except Exception as e:
-                success = False
-                message = str(e)
-            finally:
-                yield (tab_name, ws, success, message)
+                yield (tab_name, None, False, str(e))
 
 
 def process_file(file, output_folder, tabs=None):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     wb = pd.read_excel(file, sheet_name=None, header=None)
-    for name, df, success, message in transform_to_csv(wb, tabs=tabs):
+    for tab, df, success, message in process_workbook(wb, tabs=tabs):
         if success:
-            df.to_csv(os.path.join(output_folder, f'{name}.csv'), index=False, header=True)
+            df.to_csv(os.path.join(output_folder, f'{tab}.csv'), index=False, header=True)
         else:
-            error = open(os.path.join(output_folder, f'{name}.txt'), 'w')
+            error = open(os.path.join(output_folder, f'{tab}.txt'), 'w')
             error.write(message)
             error.close()
 
@@ -137,7 +139,9 @@ def zip_directory(directory):
 
 
 if __name__ == '__main__':
+    start = time.time()
     input_dir = 'input'
     output_dir = 'output'
     for file in [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.lower().endswith('.xlsx')]:
         process_file(file, output_dir)
+    print(time.time() - start)

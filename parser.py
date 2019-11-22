@@ -72,7 +72,7 @@ def pivot_table(df, header_row):
     df['_header'] = headers[1]
 
     df = df.pivot_table(index=id_vars + [hname], columns='_header', values='_value',
-                        aggfunc=lambda x: ''.join(str(v) for v in x if pd.notna(v)))
+                        aggfunc=lambda x: '; '.join(str(v) for v in x if pd.notna(v)))
 
     return df.reset_index()
 
